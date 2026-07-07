@@ -1,0 +1,395 @@
+---
+interface Props {
+  variant: "sheet" | "modal";
+  source: "phone" | "desktop";
+}
+
+const { variant, source } = Astro.props;
+const drawerId = `logo-drawer-${source}`;
+---
+
+<div
+  id={drawerId}
+  class:list={["ld", `ld--${variant}`]}
+  data-source={source}
+  hidden
+  aria-hidden="true"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby={`ld-title-${source}`}
+>
+  <div class="ld__backdrop" data-ld-close></div>
+
+  {
+    variant === "modal" ? (
+      <div class="ld__modal-stack">
+        <button
+          type="button"
+          class="ld__close"
+          aria-label="Close"
+          data-ld-close
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M15 5L5 15M5 5L15 15"
+              stroke="#04000A"
+              stroke-width="1.66667"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <div class="ld__panel">
+          <h2 id={`ld-title-${source}`} class="ld__title"></h2>
+          <div class="ld__preview-wrap" data-style="circle">
+            <div class="ld__preview">
+              <img class="ld__preview-img" alt="" width="120" height="120" />
+            </div>
+          </div>
+          <div class="ld__actions">
+            <button type="button" class="ld__btn" data-action="copy-png">
+              Copy PNG
+            </button>
+            <button type="button" class="ld__btn" data-action="copy-svg">
+              Copy SVG
+            </button>
+            <button type="button" class="ld__btn" data-action="download-png">
+              Download PNG
+            </button>
+            <button type="button" class="ld__btn" data-action="download-svg">
+              Download SVG
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <div class="ld__panel">
+        <div class="ld__handle" aria-hidden="true"></div>
+        <h2 id={`ld-title-${source}`} class="ld__title"></h2>
+        <div class="ld__preview-wrap" data-style="circle">
+          <div class="ld__preview">
+            <img class="ld__preview-img" alt="" width="120" height="120" />
+          </div>
+        </div>
+        <div class="ld__actions">
+          <button type="button" class="ld__btn" data-action="copy-png">
+            Copy PNG
+          </button>
+          <button type="button" class="ld__btn" data-action="copy-svg">
+            Copy SVG
+          </button>
+          <button type="button" class="ld__btn" data-action="download-png">
+            Download PNG
+          </button>
+          <button type="button" class="ld__btn" data-action="download-svg">
+            Download SVG
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  <div class="ld__toast" role="status" aria-live="polite" hidden></div>
+</div>
+
+<script>
+  import { initLogoDrawers } from "../lib/logoDrawerController";
+  initLogoDrawers();
+</script>
+
+<style is:global>
+  .ld {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: block;
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .ld[hidden]:not(.ld--visible) {
+    display: none;
+  }
+
+  .ld--visible {
+    visibility: visible;
+    pointer-events: none;
+  }
+
+  .ld--visible.ld--open {
+    pointer-events: auto;
+  }
+
+  .ld__backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: rgba(3, 7, 18, 0.4);
+    opacity: 0;
+    transition: opacity 0.32s ease;
+  }
+
+  .ld--open .ld__backdrop {
+    opacity: 1;
+  }
+
+  .ld__panel {
+    position: absolute;
+    z-index: 1;
+    background: #ffffff;
+    border: 1px solid #eaeaea;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    will-change: transform, opacity;
+    box-sizing: border-box;
+  }
+
+  /* Prevent background scroll / layout shift while sheet is open */
+  .ld-shell--locked .bc-list {
+    overscroll-behavior: contain;
+  }
+
+  /* ── Bottom sheet (phone frame) ─────────────── */
+  .ld--sheet {
+    display: flex;
+    align-items: flex-end;
+    justify-content: stretch;
+  }
+
+  .ld--sheet .ld__panel {
+    position: relative;
+    width: 100%;
+    max-height: 78%;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+    padding: 8px 16px 20px;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+    transform: translate3d(0, 100%, 0);
+    transition: transform 0.36s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .ld--sheet.ld--open .ld__panel {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .ld--sheet .ld__handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: #d1d5db;
+    margin: 4px auto 8px;
+    flex-shrink: 0;
+  }
+
+  .ld--sheet .ld__preview {
+    width: clamp(72px, 22vw, 88px);
+    height: clamp(72px, 22vw, 88px);
+  }
+
+  .ld--sheet .ld__title {
+    font-size: 16px;
+    text-align: center;
+  }
+
+  .ld--sheet .ld__btn {
+    font-size: 13px;
+    padding: 9px 10px;
+  }
+
+  .ld--sheet .ld__toast {
+    bottom: calc(100% + 8px);
+    white-space: normal;
+  }
+
+  /* ── Centered modal (desktop sidebar) ───────── */
+  .ld--modal .ld__modal-stack {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    width: min(calc(100% - 32px), 280px);
+    max-height: calc(100% - 32px);
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10px)) scale(0.96);
+    transition:
+      opacity 0.26s ease,
+      transform 0.26s ease;
+    will-change: transform, opacity;
+    pointer-events: none;
+  }
+
+  .ld--modal.ld--open .ld__modal-stack {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
+  }
+
+  .ld--modal .ld__modal-stack .ld__panel {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    max-height: none;
+    opacity: 1;
+    transform: none;
+    transition: none;
+    overflow-y: auto;
+    border-radius: 12px;
+    padding: 20px;
+    gap: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
+  }
+
+  .ld--modal .ld__preview {
+    width: 96px;
+    height: 96px;
+  }
+
+  .ld--modal .ld__title {
+    font-size: 16px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .ld--modal .ld__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #eaeaea;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: border-color 0.15s ease;
+  }
+
+  .ld--modal .ld__close:hover {
+    border-color: #d1d5db;
+  }
+
+  .ld--modal .ld__btn {
+    font-size: 13px;
+    padding: 9px 10px;
+  }
+
+  .ld__title {
+    font-size: 18px;
+    font-weight: 500;
+    color: #030712;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    margin: 0;
+  }
+
+  .ld__preview-wrap {
+    display: flex;
+    justify-content: center;
+  }
+
+  .ld__preview {
+    overflow: hidden;
+    border: 1px solid #e6e7ea;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    flex-shrink: 0;
+  }
+
+  .ld__preview-wrap[data-style="circle"] .ld__preview {
+    border-radius: 50%;
+  }
+
+  .ld__preview-wrap[data-style="square"] .ld__preview {
+    border-radius: 8px;
+  }
+
+  .ld__preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  .ld__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(8px, 1.2vw, 10px);
+  }
+
+  .ld__btn {
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #ffffff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    color: #030712;
+    letter-spacing: -0.02em;
+    cursor: pointer;
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease;
+  }
+
+  .ld__btn:hover:not(:disabled) {
+    border-color: #6b7280;
+  }
+
+  .ld__btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .ld__toast {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+    background: #030712;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    z-index: 2;
+    max-width: calc(100% - 32px);
+    text-align: center;
+  }
+
+  .ld__toast[data-ok="false"] {
+    background: #991b1b;
+  }
+
+  .ld__toast[hidden] {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ld__panel,
+    .ld__modal-stack,
+    .ld__backdrop {
+      transition: none !important;
+    }
+  }
+</style>
