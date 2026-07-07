@@ -128,6 +128,7 @@
 
 <script>
   import { BANKS_CDN_URL } from "../lib/constants";
+  import type { Bank, BankSelectDetail, LogoStyle } from "../types/bank";
 
   const list = document.getElementById("bc-list")!;
   const input = document.getElementById("bc-search") as HTMLInputElement;
@@ -146,15 +147,37 @@
   updateStatusTime();
   setInterval(updateStatusTime, 1000);
 
-  type Bank = {
-    name: string;
-    category: string;
-    logos: { png: string; [key: string]: string };
-    aliases: string[];
-  };
   let banks: Bank[] = [];
   let activeCategories: Set<string> | null = null; // null = all
-  let currentStyle = "circle";
+  let currentStyle: LogoStyle = "circle";
+
+  function escapeAttr(value: string): string {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function rowAttrs(b: Bank): string {
+    return `data-name="${escapeAttr(b.name)}" data-png="${escapeAttr(b.logos.png)}" data-svg="${escapeAttr(b.logos.svg)}" data-category="${escapeAttr(b.category)}"`;
+  }
+
+  function bankFromRow(row: HTMLElement): Bank {
+    return {
+      name: row.dataset.name!,
+      category: row.dataset.category ?? "",
+      aliases: [],
+      logos: {
+        png: row.dataset.png!,
+        svg: row.dataset.svg!,
+      },
+    };
+  }
+
+  function dispatchBankSelect(bank: Bank) {
+    const detail: BankSelectDetail = { bank, style: currentStyle };
+    window.dispatchEvent(new CustomEvent("bank:select", { detail }));
+  }
 
   const BATCH = 50;
   const PLACEHOLDER = "/_default/circle.svg";
@@ -178,9 +201,9 @@
 
   function row(b: Bank, id = "") {
     return `
-      <div class="bc-row" role="listitem" data-category="${b.category}">
+      <div class="bc-row" role="listitem" ${rowAttrs(b)}>
         <div class="bc-logo">
-          <img${id ? ` id="${id}"` : ""} src="${logoFor(b)}" alt="${b.name}">
+          <img${id ? ` id="${id}"` : ""} src="${logoFor(b)}" alt="${escapeAttr(b.name)}">
         </div>
         <span class="bc-row__name">${b.name}</span>
       </div>`;
@@ -215,9 +238,9 @@
     list.innerHTML = data
       .map(
         (b, i) => `
-      <div class="bc-row" role="listitem" data-category="${b.category}">
+      <div class="bc-row" role="listitem" ${rowAttrs(b)}>
         <div class="bc-logo">
-          <img id="ra-${i}" src="${placeholder}" alt="${b.name}">
+          <img id="ra-${i}" src="${placeholder}" alt="${escapeAttr(b.name)}">
         </div>
         <span class="bc-row__name">${b.name}</span>
       </div>`,
@@ -263,9 +286,9 @@
         rest
           .map(
             (b, i) => `
-          <div class="bc-row" role="listitem" data-category="${b.category}">
+          <div class="bc-row" role="listitem" ${rowAttrs(b)}>
             <div class="bc-logo">
-              <img id="bl-${BATCH + i}" src="${PLACEHOLDER}" alt="${b.name}">
+              <img id="bl-${BATCH + i}" src="${PLACEHOLDER}" alt="${escapeAttr(b.name)}">
             </div>
             <span class="bc-row__name">${b.name}</span>
           </div>`,
@@ -293,6 +316,12 @@
     list.dataset.style = style;
     renderSkeletons();
     setTimeout(() => renderAll(getFiltered()), 10);
+  });
+
+  list.addEventListener("click", (e) => {
+    const rowEl = (e.target as Element).closest<HTMLElement>(".bc-row[data-name]");
+    if (!rowEl || rowEl.classList.contains("bc-row--skeleton")) return;
+    dispatchBankSelect(bankFromRow(rowEl));
   });
 
   list.dataset.style = "circle";
@@ -492,6 +521,12 @@
     padding: 10px 16px;
     position: relative;
     flex-shrink: 0;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .bc-row:not(.bc-row--skeleton):hover {
+    background: #f9fafb;
   }
 
   /* Divider starts after logo: 16px pad + 32px logo + 12px gap = 60px */

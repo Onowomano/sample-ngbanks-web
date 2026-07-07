@@ -1089,6 +1089,30 @@
     category: string;
   };
 
+  function getCurrentStyle(): "circle" | "square" {
+    const dmOuter = document.querySelector<HTMLDivElement>(".dm-outer");
+    return dmOuter?.dataset.style === "square" ? "square" : "circle";
+  }
+
+  function dispatchBankSelect(bank: Bank) {
+    window.dispatchEvent(
+      new CustomEvent("bank:select", {
+        detail: {
+          bank: {
+            name: bank.name,
+            category: bank.category,
+            aliases: bank.aliases,
+            logos: {
+              png: bank.logos.png ?? "",
+              svg: bank.logos.svg ?? "",
+            },
+          },
+          style: getCurrentStyle(),
+        },
+      }),
+    );
+  }
+
   function renderBanks(banks: Bank[]) {
     bankList.innerHTML = "";
     for (const b of banks) {
@@ -1098,6 +1122,8 @@
       el.dataset.name = b.name;
       el.dataset.aliases = b.aliases.join(",");
       el.dataset.category = b.category;
+      el.dataset.png = b.logos.png ?? "";
+      el.dataset.svg = b.logos.svg ?? "";
       el.dataset.circle = b.logos.png ?? "";
       el.dataset.square = b.logos.png ?? "";
       el.innerHTML = `<div class="dm-opt__logo"><img src="${b.logos.png ?? ""}" alt="${b.name}" width="28" height="28" loading="lazy"/></div><span class="dm-opt__name">${b.name}</span>`;
@@ -1161,6 +1187,15 @@
       selectedLogo.classList.add("dm-combobox__selected-logo--chosen");
       selectedLogo.innerHTML = `<img src="${img.src}" alt="${name}" style="width:20px;height:20px;display:block;">`;
     }
+    dispatchBankSelect({
+      name,
+      category: optEl.dataset.category ?? "",
+      aliases: (optEl.dataset.aliases ?? "").split(",").filter(Boolean),
+      logos: {
+        png: optEl.dataset.png ?? "",
+        svg: optEl.dataset.svg ?? "",
+      },
+    });
     closePanel();
   });
 
