@@ -91,9 +91,10 @@ function bindLogoDrawer(drawer: HTMLElement, source: BankSelectSource) {
     });
 
     window.setTimeout(() => {
-      drawer.querySelector<HTMLButtonElement>(".ld__close")?.focus({
-        preventScroll: true,
-      });
+      const focusTarget = isSheet
+        ? actionButtons[0]
+        : drawer.querySelector<HTMLButtonElement>(".ld__close");
+      focusTarget?.focus({ preventScroll: true });
     }, 50);
   }
 

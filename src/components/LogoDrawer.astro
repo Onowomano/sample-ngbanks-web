@@ -19,55 +19,81 @@ const drawerId = `logo-drawer-${source}`;
   aria-labelledby={`ld-title-${source}`}
 >
   <div class="ld__backdrop" data-ld-close></div>
-  <div class="ld__panel">
-    {variant === "sheet" && <div class="ld__handle" aria-hidden="true"></div>}
 
-    <div class="ld__header">
-      <h2 id={`ld-title-${source}`} class="ld__title"></h2>
-      <button
-        type="button"
-        class="ld__close"
-        aria-label="Close"
-        data-ld-close
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 20 20"
-          fill="none"
-          aria-hidden="true"
+  {
+    variant === "modal" ? (
+      <div class="ld__modal-stack">
+        <button
+          type="button"
+          class="ld__close"
+          aria-label="Close"
+          data-ld-close
         >
-          <path
-            d="M15 5L5 15M5 5L15 15"
-            stroke="#04000A"
-            stroke-width="1.66667"
-            stroke-linecap="round"
-            stroke-linejoin="round"></path>
-        </svg>
-      </button>
-    </div>
-
-    <div class="ld__preview-wrap" data-style="circle">
-      <div class="ld__preview">
-        <img class="ld__preview-img" alt="" width="120" height="120" />
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M15 5L5 15M5 5L15 15"
+              stroke="#04000A"
+              stroke-width="1.66667"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <div class="ld__panel">
+          <h2 id={`ld-title-${source}`} class="ld__title"></h2>
+          <div class="ld__preview-wrap" data-style="circle">
+            <div class="ld__preview">
+              <img class="ld__preview-img" alt="" width="120" height="120" />
+            </div>
+          </div>
+          <div class="ld__actions">
+            <button type="button" class="ld__btn" data-action="copy-png">
+              Copy PNG
+            </button>
+            <button type="button" class="ld__btn" data-action="copy-svg">
+              Copy SVG
+            </button>
+            <button type="button" class="ld__btn" data-action="download-png">
+              Download PNG
+            </button>
+            <button type="button" class="ld__btn" data-action="download-svg">
+              Download SVG
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="ld__actions">
-      <button type="button" class="ld__btn" data-action="copy-png">
-        Copy PNG
-      </button>
-      <button type="button" class="ld__btn" data-action="copy-svg">
-        Copy SVG
-      </button>
-      <button type="button" class="ld__btn" data-action="download-png">
-        Download PNG
-      </button>
-      <button type="button" class="ld__btn" data-action="download-svg">
-        Download SVG
-      </button>
-    </div>
-  </div>
+    ) : (
+      <div class="ld__panel">
+        <div class="ld__handle" aria-hidden="true"></div>
+        <h2 id={`ld-title-${source}`} class="ld__title"></h2>
+        <div class="ld__preview-wrap" data-style="circle">
+          <div class="ld__preview">
+            <img class="ld__preview-img" alt="" width="120" height="120" />
+          </div>
+        </div>
+        <div class="ld__actions">
+          <button type="button" class="ld__btn" data-action="copy-png">
+            Copy PNG
+          </button>
+          <button type="button" class="ld__btn" data-action="copy-svg">
+            Copy SVG
+          </button>
+          <button type="button" class="ld__btn" data-action="download-png">
+            Download PNG
+          </button>
+          <button type="button" class="ld__btn" data-action="download-svg">
+            Download SVG
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   <div class="ld__toast" role="status" aria-live="polite" hidden></div>
 </div>
@@ -170,6 +196,7 @@ const drawerId = `logo-drawer-${source}`;
 
   .ld--sheet .ld__title {
     font-size: 16px;
+    text-align: center;
   }
 
   .ld--sheet .ld__btn {
@@ -183,26 +210,46 @@ const drawerId = `logo-drawer-${source}`;
   }
 
   /* ── Centered modal (desktop sidebar) ───────── */
-  .ld--modal .ld__panel {
+  .ld--modal .ld__modal-stack {
+    position: absolute;
     top: 50%;
     left: 50%;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
     width: min(calc(100% - 32px), 280px);
     max-height: calc(100% - 32px);
-    overflow-y: auto;
-    border-radius: 12px;
-    padding: 20px;
-    gap: 16px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
     opacity: 0;
     transform: translate(-50%, calc(-50% + 10px)) scale(0.96);
     transition:
       opacity 0.26s ease,
       transform 0.26s ease;
+    will-change: transform, opacity;
+    pointer-events: none;
   }
 
-  .ld--modal.ld--open .ld__panel {
+  .ld--modal.ld--open .ld__modal-stack {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
+  }
+
+  .ld--modal .ld__modal-stack .ld__panel {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    max-height: none;
+    opacity: 1;
+    transform: none;
+    transition: none;
+    overflow-y: auto;
+    border-radius: 12px;
+    padding: 20px;
+    gap: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
   }
 
   .ld--modal .ld__preview {
@@ -212,18 +259,32 @@ const drawerId = `logo-drawer-${source}`;
 
   .ld--modal .ld__title {
     font-size: 16px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .ld--modal .ld__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #eaeaea;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: border-color 0.15s ease;
+  }
+
+  .ld--modal .ld__close:hover {
+    border-color: #d1d5db;
   }
 
   .ld--modal .ld__btn {
     font-size: 13px;
     padding: 9px 10px;
-  }
-
-  .ld__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
   }
 
   .ld__title {
@@ -233,26 +294,6 @@ const drawerId = `logo-drawer-${source}`;
     letter-spacing: -0.02em;
     line-height: 1.25;
     margin: 0;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .ld__close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border: 1px solid #eaeaea;
-    border-radius: 8px;
-    background: #ffffff;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: border-color 0.15s ease;
-  }
-
-  .ld__close:hover {
-    border-color: #d1d5db;
   }
 
   .ld__preview-wrap {
@@ -346,6 +387,7 @@ const drawerId = `logo-drawer-${source}`;
 
   @media (prefers-reduced-motion: reduce) {
     .ld__panel,
+    .ld__modal-stack,
     .ld__backdrop {
       transition: none !important;
     }
