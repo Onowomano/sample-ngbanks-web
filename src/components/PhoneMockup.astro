@@ -1,5 +1,7 @@
 ---
 
+import LogoDrawer from "./LogoDrawer.astro";
+
 ---
 
 <div class="bc-outer">
@@ -123,6 +125,7 @@
     >
     </div>
     <div class="bc-indicator"></div>
+    <LogoDrawer variant="sheet" source="phone" />
   </div>
 </div>
 
@@ -175,7 +178,11 @@
   }
 
   function dispatchBankSelect(bank: Bank) {
-    const detail: BankSelectDetail = { bank, style: currentStyle };
+    const detail: BankSelectDetail = {
+      bank,
+      style: currentStyle,
+      source: "phone",
+    };
     window.dispatchEvent(new CustomEvent("bank:select", { detail }));
   }
 

@@ -12,9 +12,12 @@ export type Bank = {
 
 export type LogoStyle = "circle" | "square";
 
+export type BankSelectSource = "phone" | "desktop";
+
 export type BankSelectDetail = {
   bank: Bank;
   style: LogoStyle;
+  source: BankSelectSource;
 };
 
 export type ActionResult = {

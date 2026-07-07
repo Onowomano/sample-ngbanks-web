@@ -1,15 +1,29 @@
+---
+interface Props {
+  variant: "sheet" | "modal";
+  source: "phone" | "desktop";
+}
+
+const { variant, source } = Astro.props;
+const drawerId = `logo-drawer-${source}`;
+---
+
 <div
-  id="logo-drawer"
-  class="ld"
+  id={drawerId}
+  class:list={["ld", `ld--${variant}`]}
+  data-source={source}
   hidden
+  aria-hidden="true"
   role="dialog"
   aria-modal="true"
-  aria-labelledby="ld-title"
+  aria-labelledby={`ld-title-${source}`}
 >
   <div class="ld__backdrop" data-ld-close></div>
   <div class="ld__panel">
+    {variant === "sheet" && <div class="ld__handle" aria-hidden="true"></div>}
+
     <div class="ld__header">
-      <h2 id="ld-title" class="ld__title"></h2>
+      <h2 id={`ld-title-${source}`} class="ld__title"></h2>
       <button
         type="button"
         class="ld__close"
@@ -35,7 +49,7 @@
 
     <div class="ld__preview-wrap" data-style="circle">
       <div class="ld__preview">
-        <img id="ld-preview" alt="" width="120" height="120" />
+        <img class="ld__preview-img" alt="" width="120" height="120" />
       </div>
     </div>
 
@@ -55,174 +69,154 @@
     </div>
   </div>
 
-  <div id="ld-toast" class="ld__toast" role="status" aria-live="polite" hidden>
-  </div>
+  <div class="ld__toast" role="status" aria-live="polite" hidden></div>
 </div>
 
 <script>
-  import { track } from "@vercel/analytics";
-  import { copyLogo, downloadLogo } from "../lib/logoActions";
-  import type { Bank, BankSelectDetail, LogoFormat } from "../types/bank";
-
-  const drawer = document.getElementById("logo-drawer")!;
-  const titleEl = document.getElementById("ld-title")!;
-  const previewEl = document.getElementById("ld-preview") as HTMLImageElement;
-  const previewWrap = drawer.querySelector(".ld__preview-wrap") as HTMLElement;
-  const toastEl = document.getElementById("ld-toast")!;
-  const actionButtons = drawer.querySelectorAll<HTMLButtonElement>(".ld__btn");
-
-  let currentBank: Bank | null = null;
-  let busy = false;
-  let toastTimer: ReturnType<typeof setTimeout> | null = null;
-  let lastFocused: HTMLElement | null = null;
-
-  function showToast(message: string, ok: boolean) {
-    toastEl.textContent = message;
-    toastEl.hidden = false;
-    toastEl.dataset.ok = String(ok);
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      toastEl.hidden = true;
-    }, 2800);
-  }
-
-  function setBusy(next: boolean) {
-    busy = next;
-    actionButtons.forEach((btn) => {
-      btn.disabled = next;
-    });
-  }
-
-  function openDrawer(detail: BankSelectDetail) {
-    currentBank = detail.bank;
-    titleEl.textContent = detail.bank.name;
-    previewEl.src = detail.bank.logos.png;
-    previewEl.alt = detail.bank.name;
-    previewWrap.dataset.style = detail.style;
-
-    lastFocused = document.activeElement as HTMLElement | null;
-    drawer.hidden = false;
-    document.body.style.overflow = "hidden";
-    drawer.querySelector<HTMLButtonElement>(".ld__close")?.focus();
-  }
-
-  function closeDrawer() {
-    drawer.hidden = true;
-    document.body.style.overflow = "";
-    currentBank = null;
-    lastFocused?.focus();
-    lastFocused = null;
-  }
-
-  async function runAction(
-    action: "copy" | "download",
-    format: LogoFormat,
-    label: string,
-  ) {
-    if (!currentBank || busy) return;
-
-    const url = currentBank.logos[format];
-    if (!url) {
-      showToast(`${format.toUpperCase()} not available for this bank`, false);
-      return;
-    }
-
-    setBusy(true);
-    track(`${label}`);
-
-    const result =
-      action === "copy"
-        ? await copyLogo(url, format)
-        : await downloadLogo(url, currentBank.name, format);
-
-    showToast(result.message, result.ok);
-    setBusy(false);
-  }
-
-  window.addEventListener("bank:select", (e) => {
-    openDrawer((e as CustomEvent<BankSelectDetail>).detail);
-  });
-
-  drawer.addEventListener("click", (e) => {
-    const target = e.target as HTMLElement;
-    if (target.closest("[data-ld-close]")) {
-      closeDrawer();
-      return;
-    }
-
-    const btn = target.closest<HTMLButtonElement>("[data-action]");
-    if (!btn) return;
-
-    const action = btn.dataset.action;
-    if (action === "copy-png") runAction("copy", "png", "Logo Copy PNG");
-    if (action === "copy-svg") runAction("copy", "svg", "Logo Copy SVG");
-    if (action === "download-png")
-      runAction("download", "png", "Logo Download PNG");
-    if (action === "download-svg")
-      runAction("download", "svg", "Logo Download SVG");
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (drawer.hidden) return;
-
-    if (e.key === "Escape") {
-      e.preventDefault();
-      closeDrawer();
-      return;
-    }
-
-    if (e.key !== "Tab") return;
-
-    const focusable = drawer.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-    );
-    if (!focusable.length) return;
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  });
+  import { initLogoDrawers } from "../lib/logoDrawerController";
+  initLogoDrawers();
 </script>
 
 <style is:global>
   .ld {
-    position: fixed;
+    position: absolute;
     inset: 0;
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
+    z-index: 50;
+    display: block;
+    pointer-events: none;
+    visibility: hidden;
   }
 
-  .ld[hidden] {
+  .ld[hidden]:not(.ld--visible) {
     display: none;
+  }
+
+  .ld--visible {
+    visibility: visible;
+    pointer-events: none;
+  }
+
+  .ld--visible.ld--open {
+    pointer-events: auto;
   }
 
   .ld__backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(3, 7, 18, 0.45);
+    z-index: 0;
+    background: rgba(3, 7, 18, 0.4);
+    opacity: 0;
+    transition: opacity 0.32s ease;
+  }
+
+  .ld--open .ld__backdrop {
+    opacity: 1;
   }
 
   .ld__panel {
-    position: relative;
-    width: min(100%, 360px);
+    position: absolute;
+    z-index: 1;
     background: #ffffff;
     border: 1px solid #eaeaea;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
+    will-change: transform, opacity;
+    box-sizing: border-box;
+  }
+
+  /* Prevent background scroll / layout shift while sheet is open */
+  .ld-shell--locked .bc-list {
+    overscroll-behavior: contain;
+  }
+
+  /* ── Bottom sheet (phone frame) ─────────────── */
+  .ld--sheet {
+    display: flex;
+    align-items: flex-end;
+    justify-content: stretch;
+  }
+
+  .ld--sheet .ld__panel {
+    position: relative;
+    width: 100%;
+    max-height: 78%;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+    padding: 8px 16px 20px;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+    transform: translate3d(0, 100%, 0);
+    transition: transform 0.36s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .ld--sheet.ld--open .ld__panel {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .ld--sheet .ld__handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: #d1d5db;
+    margin: 4px auto 8px;
+    flex-shrink: 0;
+  }
+
+  .ld--sheet .ld__preview {
+    width: clamp(72px, 22vw, 88px);
+    height: clamp(72px, 22vw, 88px);
+  }
+
+  .ld--sheet .ld__title {
+    font-size: 16px;
+  }
+
+  .ld--sheet .ld__btn {
+    font-size: 13px;
+    padding: 9px 10px;
+  }
+
+  .ld--sheet .ld__toast {
+    bottom: calc(100% + 8px);
+    white-space: normal;
+  }
+
+  /* ── Centered modal (desktop sidebar) ───────── */
+  .ld--modal .ld__panel {
+    top: 50%;
+    left: 50%;
+    width: min(calc(100% - 32px), 280px);
+    max-height: calc(100% - 32px);
+    overflow-y: auto;
+    border-radius: 12px;
+    padding: 20px;
+    gap: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10px)) scale(0.96);
+    transition:
+      opacity 0.26s ease,
+      transform 0.26s ease;
+  }
+
+  .ld--modal.ld--open .ld__panel {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .ld--modal .ld__preview {
+    width: 96px;
+    height: 96px;
+  }
+
+  .ld--modal .ld__title {
+    font-size: 16px;
+  }
+
+  .ld--modal .ld__btn {
+    font-size: 13px;
+    padding: 9px 10px;
   }
 
   .ld__header {
@@ -267,8 +261,6 @@
   }
 
   .ld__preview {
-    width: 120px;
-    height: 120px;
     overflow: hidden;
     border: 1px solid #e6e7ea;
     box-sizing: border-box;
@@ -276,6 +268,7 @@
     align-items: center;
     justify-content: center;
     background: #ffffff;
+    flex-shrink: 0;
   }
 
   .ld__preview-wrap[data-style="circle"] .ld__preview {
@@ -286,7 +279,7 @@
     border-radius: 8px;
   }
 
-  .ld__preview img {
+  .ld__preview-img {
     width: 100%;
     height: 100%;
     object-fit: contain;
@@ -296,7 +289,7 @@
   .ld__actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: clamp(8px, 1.2vw, 10px);
   }
 
   .ld__btn {
@@ -325,20 +318,21 @@
   }
 
   .ld__toast {
-    position: fixed;
-    bottom: 24px;
+    position: absolute;
+    bottom: 16px;
     left: 50%;
     transform: translateX(-50%);
-    padding: 10px 16px;
+    z-index: 2;
+    padding: 8px 14px;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 400;
     letter-spacing: -0.02em;
     color: #ffffff;
     background: #030712;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    z-index: 1001;
-    max-width: calc(100% - 40px);
+    z-index: 2;
+    max-width: calc(100% - 32px);
     text-align: center;
   }
 
@@ -350,17 +344,10 @@
     display: none;
   }
 
-  @media (max-width: 768px) {
-    .ld {
-      align-items: flex-end;
-      padding: 0;
-    }
-
-    .ld__panel {
-      width: 100%;
-      border-radius: 16px 16px 0 0;
-      border-bottom: none;
-      padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  @media (prefers-reduced-motion: reduce) {
+    .ld__panel,
+    .ld__backdrop {
+      transition: none !important;
     }
   }
 </style>
