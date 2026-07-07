@@ -4,6 +4,16 @@ import type { Bank, BankSelectDetail, BankSelectSource, LogoFormat } from "../ty
 
 const SHEET_MS = 360;
 const MODAL_MS = 260;
+const SUCCESS_MS = 1800;
+
+const SUCCESS_LABEL: Record<"copy" | "download", string> = {
+  copy: "Copied",
+  download: "Downloaded",
+};
+
+function successButtonMarkup(label: string): string {
+  return `<span class="ld__btn-check" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="ld__btn-label">${label}</span>`;
+}
 
 function bindLogoDrawer(drawer: HTMLElement, source: BankSelectSource) {
   const shell = drawer.closest<HTMLElement>(".bc-inner, .dm-sidebar");
@@ -17,12 +27,18 @@ function bindLogoDrawer(drawer: HTMLElement, source: BankSelectSource) {
   const toastEl = drawer.querySelector<HTMLElement>(".ld__toast")!;
   const actionButtons = drawer.querySelectorAll<HTMLButtonElement>(".ld__btn");
 
+  actionButtons.forEach((btn) => {
+    if (!btn.dataset.defaultLabel) {
+      btn.dataset.defaultLabel = btn.textContent?.trim() ?? "";
+    }
+  });
+
   let currentBank: Bank | null = null;
-  let busy = false;
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let lastFocused: HTMLElement | null = null;
   let closeTimer: ReturnType<typeof setTimeout> | null = null;
   let savedScrollTop = 0;
+  const successTimers = new WeakMap<HTMLButtonElement, ReturnType<typeof setTimeout>>();
 
   function lockShell() {
     if (!shell) return;
@@ -42,21 +58,42 @@ function bindLogoDrawer(drawer: HTMLElement, source: BankSelectSource) {
     }
   }
 
-  function showToast(message: string, ok: boolean) {
+  function showToast(message: string) {
     toastEl.textContent = message;
     toastEl.hidden = false;
-    toastEl.dataset.ok = String(ok);
+    toastEl.dataset.ok = "false";
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
       toastEl.hidden = true;
     }, 2800);
   }
 
-  function setBusy(next: boolean) {
-    busy = next;
-    actionButtons.forEach((btn) => {
-      btn.disabled = next;
-    });
+  function resetButtonSuccess(btn: HTMLButtonElement) {
+    const timer = successTimers.get(btn);
+    if (timer) clearTimeout(timer);
+    successTimers.delete(btn);
+    btn.classList.remove("ld__btn--success");
+    btn.textContent = btn.dataset.defaultLabel ?? "";
+    btn.removeAttribute("aria-label");
+  }
+
+  function resetAllButtonSuccess() {
+    actionButtons.forEach((btn) => resetButtonSuccess(btn));
+  }
+
+  function showButtonSuccess(
+    btn: HTMLButtonElement,
+    action: "copy" | "download",
+  ) {
+    resetButtonSuccess(btn);
+    const label = SUCCESS_LABEL[action];
+    btn.innerHTML = successButtonMarkup(label);
+    btn.classList.add("ld__btn--success");
+    btn.setAttribute("aria-label", label);
+    successTimers.set(
+      btn,
+      window.setTimeout(() => resetButtonSuccess(btn), SUCCESS_MS),
+    );
   }
 
   function openDrawer(detail: BankSelectDetail) {
@@ -66,6 +103,9 @@ function bindLogoDrawer(drawer: HTMLElement, source: BankSelectSource) {
       clearTimeout(closeTimer);
       closeTimer = null;
     }
+
+    resetAllButtonSuccess();
+    toastEl.hidden = true;
 
     currentBank = detail.bank;
     titleEl.textContent = detail.bank.name;
@@ -102,6 +142,7 @@ function bindLogoDrawer(drawer: HTMLElement, source: BankSelectSource) {
     drawer.classList.remove("ld--open");
     drawer.setAttribute("aria-hidden", "true");
     unlockShell();
+    resetAllButtonSuccess();
 
     if (closeTimer) clearTimeout(closeTimer);
     closeTimer = window.setTimeout(() => {
@@ -118,19 +159,20 @@ function bindLogoDrawer(drawer: HTMLElement, source: BankSelectSource) {
   }
 
   async function runAction(
+    btn: HTMLButtonElement,
     action: "copy" | "download",
     format: LogoFormat,
     label: string,
   ) {
-    if (!currentBank || busy) return;
+    if (!currentBank || btn.disabled) return;
 
     const url = currentBank.logos[format];
     if (!url) {
-      showToast(`${format.toUpperCase()} not available for this bank`, false);
+      showToast(`${format.toUpperCase()} not available for this bank`);
       return;
     }
 
-    setBusy(true);
+    btn.disabled = true;
     track(label);
 
     const result =
@@ -138,8 +180,13 @@ function bindLogoDrawer(drawer: HTMLElement, source: BankSelectSource) {
         ? await copyLogo(url, format)
         : await downloadLogo(url, currentBank.name, format);
 
-    showToast(result.message, result.ok);
-    setBusy(false);
+    btn.disabled = false;
+
+    if (result.ok) {
+      showButtonSuccess(btn, action);
+    } else {
+      showToast(result.message);
+    }
   }
 
   window.addEventListener("bank:select", (e) => {
@@ -157,12 +204,12 @@ function bindLogoDrawer(drawer: HTMLElement, source: BankSelectSource) {
     if (!btn) return;
 
     const action = btn.dataset.action;
-    if (action === "copy-png") runAction("copy", "png", "Logo Copy PNG");
-    if (action === "copy-svg") runAction("copy", "svg", "Logo Copy SVG");
+    if (action === "copy-png") runAction(btn, "copy", "png", "Logo Copy PNG");
+    if (action === "copy-svg") runAction(btn, "copy", "svg", "Logo Copy SVG");
     if (action === "download-png")
-      runAction("download", "png", "Logo Download PNG");
+      runAction(btn, "download", "png", "Logo Download PNG");
     if (action === "download-svg")
-      runAction("download", "svg", "Logo Download SVG");
+      runAction(btn, "download", "svg", "Logo Download SVG");
   });
 
   document.addEventListener("keydown", (e) => {
